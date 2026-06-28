@@ -1,6 +1,6 @@
 const express = require("express");
 const mysql = require("mysql2");
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcryptjs'); // Χρήση bcryptjs για μέγιστη συμβατότητα στο Render
 const session = require('express-session');
 const app = express();
 
@@ -70,33 +70,34 @@ app.post("/register", async (req, res) => {
     }
 });
 
-// 2. ΣΥΝΔΕΣΗ ΧΡΗΣΤΗ (LOGIN)
+// 2. ΣΥΝΔΕΣΗ ΧΡΗΣΤΗ (LOGIN) - ΔΙΟΡΘΩΜΕΝΟ ΓΙΑ ΤΟ RENDER 🚀
 app.post("/login", (req, res) => {
     const { username, password } = req.body;
 
+    // 🔥 ΠΑΡΑΚΑΜΨΗ ΓΙΑ ΤΟ PORTFOLIO: 
+    // Αν ζητηθεί login ως guest, περνάει κατευθείαν χωρίς να ρωτήσουμε τη βάση δεδομένων!
+    if (username === "guest") {
+        if (password === "guest123") {
+            req.session.userId = 9999; // Εικονικό ID για να δουλεύουν τα sessions του guest
+            req.session.username = "guest";
+            return res.json({ message: "Συνδέθηκες ως Guest!", username: "guest" });
+        } else {
+            return res.status(400).json({ message: "Λάθος κωδικός Guest" });
+        }
+    }
+
+    // Για όλους τους άλλους κανονικούς χρήστες, η MySQL και το Bcrypt δουλεύουν κανονικά
     db.query("SELECT * FROM users WHERE username = ?", [username], async (err, results) => {
         if (err) return res.status(500).json({ error: err });
         if (results.length === 0) return res.status(400).json({ message: "Λάθος username ή password" });
 
         const user = results[0];
 
-        // 🚀 ΕΙΔΙΚΗ ΠΡΟΣΘΗΚΗ ΓΙΑ ΤΟ PORTFOLIO: 
-        // Αν είναι ο guest, περνάει κατευθείαν με απλή σύγκριση κειμένου για αποφυγή θεμάτων bcrypt
-        if (user.username === "guest") {
-            if (password === "guest123") {
-                req.session.userId = user.id;
-                req.session.username = user.username;
-                return res.json({ message: "Συνδέθηκες ως Guest!", username: user.username });
-            } else {
-                return res.status(400).json({ message: "Λάθος κωδικός Guest" });
-            }
-        }
-
-        // Για όλους τους άλλους κανονικούς χρήστες, η κρυπτογράφηση Bcrypt δουλεύει κανονικά!
+        // Έλεγχος κρυπτογραφημένου κωδικού
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ message: "Λάθος username ή password" });
 
-        // ΑΠΟΘΗΚΕΥΟΥΜΕ ΤΟΝ ΚΑΝΟΝΙΚΟ ΧΡΗΣΤΗ ΣΤΟ SESSION
+        // ΑΠΟΘΗΚΕΥΟΥΜΕ ΤΟΝ ΧΡΗΣΤΗ ΣΤΟ SESSION
         req.session.userId = user.id;
         req.session.username = user.username;
 
