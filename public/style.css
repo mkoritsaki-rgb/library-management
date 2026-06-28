@@ -117,16 +117,19 @@ tr:hover {
     color: white;
 }
 
-/* IMAGES (desktop default) */
+/* IMAGES */
 img {
     max-width: 100%;
     height: auto;
     display: block;
 }
 
-/* RESPONSIVE DESIGN */
+/* =========================
+   RESPONSIVE DESIGN
+========================= */
 @media (max-width: 768px) {
 
+    /* container πιο μικρό */
     .container {
         width: 90%;
         margin: 20px auto;
@@ -150,9 +153,25 @@ img {
         width: 100%;
     }
 
-    /* μικρότερη εικόνα στο κινητό */
+    /* εικόνα πιο μικρή */
     img {
         width: 60%;
         margin: 0 auto;
+    }
+
+    /* ====== Η ΣΥΛΛΟΓΗ ΜΟΥ (ΜΙΚΡΟΤΕΡΟ ΚΟΥΤΙ) ====== */
+    .books-list {
+        width: 88%;
+        margin: 0 auto;
+        padding: 10px;
+    }
+
+    /* table πιο mobile-friendly */
+    table {
+        font-size: 0.85rem;
+    }
+
+    th, td {
+        padding: 8px;
     }
 }
