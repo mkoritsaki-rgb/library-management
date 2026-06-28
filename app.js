@@ -1,17 +1,30 @@
 const express = require("express");
 const mysql = require("mysql2");
-
+const bcrypt = require('bcrypt');
+const session = require('express-session');
 const app = express();
 
-/* =========================
-   MIDDLEWARE
-========================= */
+/* ==========================================================================
+   🌟 MIDDLEWARES (Η ΣΩΣΤΗ ΣΕΙΡΑ ΓΙΑ ΝΑ ΔΟΥΛΕΥΟΥΝ ΤΑ FETCH & SESSIONS)
+   ========================================================================== */
+
+// 1. ΠΡΩΤΑ ΕΝΕΡΓΟΠΟΙΟΥΜΕ ΤΟ JSON: Για να μπορεί ο server να διαβάζει τα δεδομένα που στέλνει το frontend
 app.use(express.json());
+
+// 2. ΜΕΤΑ ΤΟ SESSION: Για να θυμάται ο server ποιος χρήστης είναι συνδεδεμένος
+app.use(session({
+    secret: 'mary_secret_key_123', 
+    resave: false,
+    saveUninitialized: false,
+    cookie: { maxAge: 24 * 60 * 60 * 1000 } // 24 ώρες διάρκεια
+}));
+
+// 3. ΤΕΛΕΥΤΑΙΟ ΤΟ STATIC: Σερβίρει τα αρχεία του frontend (HTML, CSS, JS) από τον φάκελο public
 app.use(express.static("public"));
 
-/* =========================
-   MYSQL CONNECTION (ONLINE & LOCAL CONFIG)
-========================= */
+/* ==========================================================================
+   🗄️ MYSQL CONNECTION (CLEVER CLOUD / LOCALHOST)
+   ========================================================================== */
 const db = mysql.createConnection({
   host: process.env.MYSQL_ADDON_HOST || "localhost",
   user: process.env.MYSQL_ADDON_USER || "root",
@@ -28,114 +41,165 @@ db.connect((err) => {
   console.log("✅ Συνδέθηκε στη MySQL (Clever Cloud/Local)!");
 });
 
-/* =========================
-   GET ALL BOOKS
-========================= */
-app.get("/books", (req, res) => {
-  db.query("SELECT * FROM books", (err, results) => {
-    if (err) {
-      return res.status(500).json({ error: err });
+/* ==========================================================================
+   🔒 AUTHENTICATION ENDPOINTS (REGISTER & LOGIN)
+   ========================================================================== */
+
+// 1. ΕΓΓΡΑΦΗ ΝΕΟΥ ΧΡΗΣΤΗ
+app.post("/register", async (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) {
+        return res.status(400).json({ message: "Username και password είναι υποχρεωτικά" });
     }
+
+    try {
+        // Κρυπτογραφούμε τον κωδικό πριν τον αποθηκεύσουμε
+        const hashedPassword = await bcrypt.hash(password, 10);
+        
+        db.query("INSERT INTO users (username, password) VALUES (?, ?)", [username, hashedPassword], (err, result) => {
+            if (err) {
+                if (err.code === 'ER_DUP_ENTRY') {
+                    return res.status(400).json({ message: "Το όνομα χρήστη χρησιμοποιείται ήδη" });
+                }
+                return res.status(500).json({ error: err });
+            }
+            res.json({ message: "Η εγγραφή έγινε με επιτυχία!" });
+        });
+    } catch (error) {
+        res.status(500).json({ message: "Σφάλμα κατά την εγγραφή" });
+    }
+});
+
+// 2. ΣΥΝΔΕΣΗ ΧΡΗΣΤΗ (LOGIN)
+app.post("/login", (req, res) => {
+    const { username, password } = req.body;
+
+    db.query("SELECT * FROM users WHERE username = ?", [username], async (err, results) => {
+        if (err) return res.status(500).json({ error: err });
+        if (results.length === 0) return res.status(400).json({ message: "Λάθος username ή password" });
+
+        const user = results[0];
+
+        // 🚀 ΕΙΔΙΚΗ ΠΡΟΣΘΗΚΗ ΓΙΑ ΤΟ PORTFOLIO: 
+        // Αν είναι ο guest, περνάει κατευθείαν με απλή σύγκριση κειμένου για αποφυγή θεμάτων bcrypt
+        if (user.username === "guest") {
+            if (password === "guest123") {
+                req.session.userId = user.id;
+                req.session.username = user.username;
+                return res.json({ message: "Συνδέθηκες ως Guest!", username: user.username });
+            } else {
+                return res.status(400).json({ message: "Λάθος κωδικός Guest" });
+            }
+        }
+
+        // Για όλους τους άλλους κανονικούς χρήστες, η κρυπτογράφηση Bcrypt δουλεύει κανονικά!
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) return res.status(400).json({ message: "Λάθος username ή password" });
+
+        // ΑΠΟΘΗΚΕΥΟΥΜΕ ΤΟΝ ΚΑΝΟΝΙΚΟ ΧΡΗΣΤΗ ΣΤΟ SESSION
+        req.session.userId = user.id;
+        req.session.username = user.username;
+
+        res.json({ message: "Συνδέθηκες επιτυχώς!", username: user.username });
+    });
+});
+
+// 3. ΑΠΟΣΥΝΔΕΣΗ (LOGOUT)
+app.get("/logout", (req, res) => {
+    req.session.destroy(() => {
+        res.json({ message: "Αποσυνδέθηκες!" });
+    });
+});
+
+// 4. ΕΛΕΓΧΟΣ ΑΝ ΕΙΝΑΙ ΣΥΝΔΕΔΕΜΕΝΟΣ Ο ΧΡΗΣΤΗΣ
+app.get("/check-auth", (req, res) => {
+    if (req.session.userId) {
+        res.json({ authenticated: true, username: req.session.username });
+    } else {
+        res.json({ authenticated: false });
+    }
+});
+
+
+/* ==========================================================================
+   📚 BOOKS ENDPOINTS (ΠΡΟΣΤΑΤΕΥΜΕΝΑ ΜΕ USER_ID)
+   ========================================================================== */
+
+// Λίστα βιβλίων: Φέρνει ΜΟΝΟ τα βιβλία του συνδεδεμένου χρήστη
+app.get("/books", (req, res) => {
+  if (!req.session.userId) return res.status(401).json({ message: "Παρακαλώ συνδεθείτε" });
+
+  db.query("SELECT * FROM books WHERE user_id = ?", [req.session.userId], (err, results) => {
+    if (err) return res.status(500).json({ error: err });
     res.json(results);
   });
 });
 
-/* =========================
-   GET BOOK BY ID
-========================= */
+// Προβολή ενός βιβλίου (αν ανήκει στον χρήστη)
 app.get("/books/:id", (req, res) => {
+  if (!req.session.userId) return res.status(401).json({ message: "Παρακαλώ συνδεθείτε" });
   const id = req.params.id;
 
-  db.query("SELECT * FROM books WHERE id = ?", [id], (err, results) => {
-    if (err) {
-      return res.status(500).json({ error: err });
-    }
-
-    if (results.length === 0) {
-      return res.status(404).json({ message: "Δεν βρέθηκε βιβλίο" });
-    }
-
+  db.query("SELECT * FROM books WHERE id = ? AND user_id = ?", [id, req.session.userId], (err, results) => {
+    if (err) return res.status(500).json({ error: err });
+    if (results.length === 0) return res.status(404).json({ message: "Δεν βρέθηκε βιβλίο" });
     res.json(results[0]);
   });
 });
 
-/* =========================
-   ADD BOOK
-========================= */
+// Προσθήκη βιβλίου: Αποθηκεύεται ΜΑΖΙ με το user_id του χρήστη
 app.post("/books", (req, res) => {
+  if (!req.session.userId) return res.status(401).json({ message: "Παρακαλώ συνδεθείτε" });
   const { title, author, year } = req.body;
 
-  console.log("BODY:", req.body);
-
-  if (!title || !author) {
-    return res.status(400).json({ message: "title & author required" });
-  }
+  if (!title || !author) return res.status(400).json({ message: "title & author required" });
 
   db.query(
-    "INSERT INTO books (title, author, year) VALUES (?, ?, ?)",
-    [title, author, year],
+    "INSERT INTO books (title, author, year, user_id) VALUES (?, ?, ?, ?)",
+    [title, author, year, req.session.userId],
     (err, result) => {
-      if (err) {
-        return res.status(500).json({ error: err });
-      }
+      if (err) return res.status(500).json({ error: err });
 
       res.json({
         message: "Το βιβλίο προστέθηκε!",
-        book: {
-          id: result.insertId,
-          title,
-          author,
-          year
-        }
+        book: { id: result.insertId, title, author, year }
       });
     }
   );
 });
 
-/* =========================
-   UPDATE BOOK
-========================= */
+// Ενημέρωση βιβλίου
 app.put("/books/:id", (req, res) => {
+  if (!req.session.userId) return res.status(401).json({ message: "Παρακαλώ συνδεθείτε" });
   const id = req.params.id;
   const { title, author, year } = req.body;
 
   db.query(
-    "UPDATE books SET title=?, author=?, year=? WHERE id=?",
-    [title, author, year, id],
+    "UPDATE books SET title=?, author=?, year=? WHERE id=? AND user_id=?",
+    [title, author, year, id, req.session.userId],
     (err, result) => {
-      if (err) {
-        return res.status(500).json({ error: err });
-      }
-
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ message: "Δεν βρέθηκε βιβλίο" });
-      }
-
+      if (err) return res.status(500).json({ error: err });
+      if (result.affectedRows === 0) return res.status(404).json({ message: "Δεν βρέθηκε βιβλίο" });
       res.json({ message: "Updated successfully" });
     }
   );
 });
 
-/* =========================
-   DELETE BOOK
-========================= */
+// Διαγραφή βιβλίου
 app.delete("/books/:id", (req, res) => {
+  if (!req.session.userId) return res.status(401).json({ message: "Παρακαλώ συνδεθείτε" });
   const id = req.params.id;
 
-  db.query("DELETE FROM books WHERE id=?", [id], (err, result) => {
-    if (err) {
-      return res.status(500).json({ error: err });
-    }
-
+  db.query("DELETE FROM books WHERE id=? AND user_id=?", [id, req.session.userId], (err, result) => {
+    if (err) return res.status(500).json({ error: err });
     res.json({ message: "Deleted successfully" });
   });
 });
 
-/* =========================
-   START SERVER
-========================= */
+/* ==========================================================================
+   🚀 START SERVER
+   ========================================================================== */
 const PORT = process.env.PORT || 3001;
-
 app.listen(PORT, () => {
   console.log(`Server τρέχει στη θύρα ${PORT}`);
 });
