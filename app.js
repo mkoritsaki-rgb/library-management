@@ -33,9 +33,10 @@ const db = mysql.createConnection({
   port: process.env.MYSQL_ADDON_PORT || 3306
 });
 
+// 🔥 ΑΣΦΑΛΗΣ ΣΥΝΔΕΣΗ: Καταγράφει το λάθος χωρίς να ρίχνει τον server!
 db.connect((err) => {
   if (err) {
-    console.error("❌ DB Error:", err.message);
+    console.error("❌ DB Error αλλά ο server συνεχίζει κανονικά:", err.message);
     return;
   }
   console.log("✅ Συνδέθηκε στη MySQL (Clever Cloud/Local)!");
