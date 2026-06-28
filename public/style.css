@@ -117,6 +117,13 @@ tr:hover {
     color: white;
 }
 
+/* IMAGES (desktop default) */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
 /* RESPONSIVE DESIGN */
 @media (max-width: 768px) {
 
@@ -141,5 +148,11 @@ tr:hover {
 
     button {
         width: 100%;
+    }
+
+    /* μικρότερη εικόνα στο κινητό */
+    img {
+        width: 60%;
+        margin: 0 auto;
     }
 }
