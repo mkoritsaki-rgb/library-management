@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Library - Η Ψηφιακή μου Βιβλιοθήκη</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+    
+    <header>
+        <h1>📚 Smart Library 📚 </h1>
+        <p class="intro-text">
+            Καλώς ορίσατε στον προσωπικό σας ψηφιακό λογοτεχνικό καταφύγιο. Έναν χώρο σχεδιασμένο για να οργανώνετε τα βιβλία σας, να καταγράφετε τις συλλογές σας και να κρατάτε ζωντανή την αγάπη σας για το διάβασμα. Κάθε βιβλίο έχει τη δική του θέση στην ιστορία, και τώρα έχει τη δική του θέση και στη βάση μας.
+        </p>
+        <img src="https://images.unsplash.com/photo-1507842217343-583bb7270b66?q=80&w=1000&auto=format&fit=crop" alt="Cozy Library" class="library-img">
+    </header>
+
+    <section class="add-book">
+        <h2>Προσθήκη Νέου Βιβλίου</h2>
+        <form id="bookform">
+            <div class="form-group">
+                <label for="title">Τίτλος</label>
+                <input type="text" id="title" placeholder="Πληκτρολόγησε τίτλο" required>
+            </div>
+
+            <div class="form-group">
+                <label for="author">Συγγραφέας</label>
+                <input type="text" id="author" placeholder="Πληκτρολόγησε συγγραφέα" required>
+            </div>
+
+            <div class="form-group">
+                <label for="year">Έτος Έκδοσης</label>
+                <input type="number" id="year" placeholder="π.χ. 2024" required>
+            </div>
+
+            <button type="submit">Προσθήκη</button>
+        </form>
+    </section>
+
+    <section class="books-list">
+        <h2>Η Συλλογή μου</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Τίτλος</th>
+                    <th>Συγγραφέας</th>
+                    <th>Έτος</th>
+                    <th>Ενέργειες</th>
+                </tr>
+            </thead>
+            <tbody id="bookList">
+                <tr>
+                    <td colspan="4">Φόρτωση βιβλίων...</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+</div>
+
+<script>
+    // 1. Φόρτωση βιβλίων από τη βάση (Σύνδεση Σχετική - Χωρίς localhost)
+    async function loadBooks() {
+        try {
+            const response = await fetch("/books");
+            const books = await response.json();
+            
+            const tbody = document.getElementById("bookList");
+            tbody.innerHTML = ""; 
+
+            if (books.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4">Δεν υπάρχουν βιβλία στη βιβλιοθήκη.</td></tr>`;
+                return;
+            }
+
+            books.forEach(book => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td><strong>${book.title}</strong></td>
+                    <td>${book.author}</td>
+                    <td>${book.year || '-'}</td>
+                    <td>
+                        <button class="btn-delete" onclick="deleteBook(${book.id})">Διαγραφή</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } catch (error) {
+            console.error("Σφάλμα κατά τη φόρτωση των βιβλίων:", error);
+        }
+    }
+
+    // 2. Προσθήκη Βιβλίου (Σύνδεση Σχετική - Χωρίς localhost)
+    document.getElementById("bookform").addEventListener("submit", async function(e) {
+        e.preventDefault();
+
+        const title = document.getElementById("title").value;
+        const author = document.getElementById("author").value;
+        const year = parseInt(document.getElementById("year").value, 10);
+
+        const bookData = { title, author, year };
+
+        try {
+            const response = await fetch("/books", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(bookData)
+            });
+
+            if (response.ok) {
+                alert("Το βιβλίο προστέθηκε με επιτυχία!");
+                document.getElementById("bookform").reset();
+                loadBooks(); 
+            }
+        } catch (error) {
+            console.error("Error:", error);
+        }
+    });
+
+    // 3. Διαγραφή Βιβλίου (Σύνδεση Σχετική - Χωρίς localhost)
+    async function deleteBook(id) {
+        if (confirm("Θέλεις σίγουρα να διαγράψεις αυτό το βιβλίο;")) {
+            try {
+                await fetch(`/books/${id}`, {
+                    method: "DELETE"
+                });
+                loadBooks(); 
+            } catch (error) {
+                console.error("Σφάλμα κατά τη διαγραφή:", error);
+            }
+        }
+    }
+
+    // Εκκίνηση φόρτωσης μόλις ανοίξει η σελίδα
+    loadBooks();
+</script>
+</body>
+</html>
