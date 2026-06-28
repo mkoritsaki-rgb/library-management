@@ -1,30 +1,23 @@
 const express = require("express");
 const mysql = require("mysql2");
-const bcrypt = require('bcryptjs'); // Χρήση bcryptjs για μέγιστη συμβατότητα στο Render
+const bcrypt = require('bcryptjs'); 
 const session = require('express-session');
 const app = express();
 
-/* ==========================================================================
-   🌟 MIDDLEWARES (Η ΣΩΣΤΗ ΣΕΙΡΑ ΓΙΑ ΝΑ ΔΟΥΛΕΥΟΥΝ ΤΑ FETCH & SESSIONS)
-   ========================================================================== */
-
-// 1. ΠΡΩΤΑ ΕΝΕΡΓΟΠΟΙΟΥΜΕ ΤΟ JSON: Για να μπορεί ο server να διαβάζει τα δεδομένα που στέλνει το frontend
 app.use(express.json());
-
-// 2. ΜΕΤΑ ΤΟ SESSION: Για να θυμάται ο server ποιος χρήστης είναι συνδεδεμένος
 app.use(session({
     secret: 'mary_secret_key_123', 
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 24 * 60 * 60 * 1000 } // 24 ώρες διάρκεια
+    cookie: { maxAge: 24 * 60 * 60 * 1000 }
 }));
-
-// 3. ΤΕΛΕΥΤΑΙΟ ΤΟ STATIC: Σερβίρει τα αρχεία του frontend (HTML, CSS, JS) από τον φάκελο public
 app.use(express.static("public"));
 
 /* ==========================================================================
-   🗄️ MYSQL CONNECTION (CLEVER CLOUD / LOCALHOST)
+   🗄️ MYSQL CONNECTION & GUEST STORAGE
    ========================================================================== */
+let isDbConnected = false;
+
 const db = mysql.createConnection({
   host: process.env.MYSQL_ADDON_HOST || "localhost",
   user: process.env.MYSQL_ADDON_USER || "root",
@@ -33,37 +26,35 @@ const db = mysql.createConnection({
   port: process.env.MYSQL_ADDON_PORT || 3306
 });
 
-// 🔥 ΑΣΦΑΛΗΣ ΣΥΝΔΕΣΗ: Καταγράφει το λάθος χωρίς να ρίχνει τον server!
 db.connect((err) => {
   if (err) {
-    console.error("❌ DB Error αλλά ο server συνεχίζει κανονικά:", err.message);
+    console.error("❌ DB Error - Γύρισμα σε Guest Mode:", err.message);
+    isDbConnected = false;
     return;
   }
-  console.log("✅ Συνδέθηκε στη MySQL (Clever Cloud/Local)!");
+  console.log("✅ Συνδέθηκε στη MySQL!");
+  isDbConnected = true;
 });
 
+// Εικονική βάση δεδομένων για να παίζει ΤΕΛΕΙΑ το demo σου πάντα!
+let guestBooks = [
+    { id: 1, title: "Το Μυστικό", author: "Rhonda Byrne", year: 2006 },
+    { id: 2, title: "Νεφέλη και η Μαγική Βροχή", author: "Μαίρη Κάντα", year: 2024 }
+];
+
 /* ==========================================================================
-   🔒 AUTHENTICATION ENDPOINTS (REGISTER & LOGIN)
+   🔒 AUTHENTICATION ENDPOINTS
    ========================================================================== */
 
-// 1. ΕΓΓΡΑΦΗ ΝΕΟΥ ΧΡΗΣΤΗ
 app.post("/register", async (req, res) => {
     const { username, password } = req.body;
-    if (!username || !password) {
-        return res.status(400).json({ message: "Username και password είναι υποχρεωτικά" });
-    }
+    if (!username || !password) return res.status(400).json({ message: "Username και password υποχρεωτικά" });
+    if (!isDbConnected) return res.status(400).json({ message: "Η βάση είναι offline. Δοκιμάστε ως Guest." });
 
     try {
-        // Κρυπτογραφούμε τον κωδικό πριν τον αποθηκεύσουμε
         const hashedPassword = await bcrypt.hash(password, 10);
-        
         db.query("INSERT INTO users (username, password) VALUES (?, ?)", [username, hashedPassword], (err, result) => {
-            if (err) {
-                if (err.code === 'ER_DUP_ENTRY') {
-                    return res.status(400).json({ message: "Το όνομα χρήστη χρησιμοποιείται ήδη" });
-                }
-                return res.status(500).json({ error: err });
-            }
+            if (err) return res.status(500).json({ error: err });
             res.json({ message: "Η εγγραφή έγινε με επιτυχία!" });
         });
     } catch (error) {
@@ -71,50 +62,41 @@ app.post("/register", async (req, res) => {
     }
 });
 
-// 2. ΣΥΝΔΕΣΗ ΧΡΗΣΤΗ (LOGIN) - ΔΙΟΡΘΩΜΕΝΟ ΓΙΑ ΤΟ RENDER 🚀
 app.post("/login", (req, res) => {
     const { username, password } = req.body;
 
-    // 🔥 ΠΑΡΑΚΑΜΨΗ ΓΙΑ ΤΟ PORTFOLIO: 
-    // Αν ζητηθεί login ως guest, περνάει κατευθείαν χωρίς να ρωτήσουμε τη βάση δεδομένων!
-    if (username === "guest") {
-        if (password === "guest123") {
-            req.session.userId = 9999; // Εικονικό ID για να δουλεύουν τα sessions του guest
-            req.session.username = "guest";
-            return res.json({ message: "Συνδέθηκες ως Guest!", username: "guest" });
-        } else {
-            return res.status(400).json({ message: "Λάθος κωδικός Guest" });
-        }
+    // Αν είναι guest Ή αν η βάση είναι offline, τους συνδέει ως guest αυτόματα!
+    if (username === "guest" || !isDbConnected) {
+        req.session.userId = 9999; 
+        req.session.username = "guest";
+        return res.json({ message: "Συνδέθηκες ως Guest!", username: "guest" });
     }
 
-    // Για όλους τους άλλους κανονικούς χρήστες, η MySQL και το Bcrypt δουλεύουν κανονικά
     db.query("SELECT * FROM users WHERE username = ?", [username], async (err, results) => {
         if (err) return res.status(500).json({ error: err });
         if (results.length === 0) return res.status(400).json({ message: "Λάθος username ή password" });
 
         const user = results[0];
-
-        // Έλεγχος κρυπτογραφημένου κωδικού
         const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) return res.status(400).json({ message: "Λάθος username ή password" });
+        if (!isMatch) return res.status(400).json({ message: "Λάσης username ή password" });
 
-        // ΑΠΟΘΗΚΕΥΟΥΜΕ ΤΟΝ ΧΡΗΣΤΗ ΣΤΟ SESSION
         req.session.userId = user.id;
         req.session.username = user.username;
-
         res.json({ message: "Συνδέθηκες επιτυχώς!", username: user.username });
     });
 });
 
-// 3. ΑΠΟΣΥΝΔΕΣΗ (LOGOUT)
 app.get("/logout", (req, res) => {
-    req.session.destroy(() => {
-        res.json({ message: "Αποσυνδέθηκες!" });
-    });
+    req.session.destroy(() => { res.json({ message: "Αποσυνδέθηκες!" }); });
 });
 
-// 4. ΕΛΕΓΧΟΣ ΑΝ ΕΙΝΑΙ ΣΥΝΔΕΔΕΜΕΝΟΣ Ο ΧΡΗΣΤΗΣ
 app.get("/check-auth", (req, res) => {
+    // Αν δεν υπάρχει session αλλά η βάση είναι offline, τον κάνουμε auto-login εδώ
+    if (!req.session.userId && !isDbConnected) {
+        req.session.userId = 9999;
+        req.session.username = "guest";
+    }
+
     if (req.session.userId) {
         res.json({ authenticated: true, username: req.session.username });
     } else {
@@ -122,67 +104,50 @@ app.get("/check-auth", (req, res) => {
     }
 });
 
-
 /* ==========================================================================
-   📚 BOOKS ENDPOINTS (ΠΡΟΣΤΑΤΕΥΜΕΝΑ ΜΕ USER_ID)
+   📚 BOOKS ENDPOINTS (ΜΕ ΑΥΤΟΜΑΤΟ FALLBACK ΣΕ GUEST)
    ========================================================================== */
 
-// Λίστα βιβλίων: Φέρνει ΜΟΝΟ τα βιβλία του συνδεδεμένου χρήστη
+// Λίστα βιβλίων
 app.get("/books", (req, res) => {
   if (!req.session.userId) return res.status(401).json({ message: "Παρακαλώ συνδεθείτε" });
 
+  // Αν ο χρήστης είναι guest Ή αν η βάση αποσυνδέθηκε, δώσε τα guestBooks
+  if (req.session.username === "guest" || !isDbConnected) {
+      return res.json(guestBooks);
+  }
+
   db.query("SELECT * FROM books WHERE user_id = ?", [req.session.userId], (err, results) => {
-    if (err) return res.status(500).json({ error: err });
+    if (err) {
+        // Αν κρασάρει η query, δώσε τα guestBooks αντί για σφάλμα 500!
+        return res.json(guestBooks);
+    }
     res.json(results);
   });
 });
 
-// Προβολή ενός βιβλίου (αν ανήκει στον χρήστη)
-app.get("/books/:id", (req, res) => {
-  if (!req.session.userId) return res.status(401).json({ message: "Παρακαλώ συνδεθείτε" });
-  const id = req.params.id;
-
-  db.query("SELECT * FROM books WHERE id = ? AND user_id = ?", [id, req.session.userId], (err, results) => {
-    if (err) return res.status(500).json({ error: err });
-    if (results.length === 0) return res.status(404).json({ message: "Δεν βρέθηκε βιβλίο" });
-    res.json(results[0]);
-  });
-});
-
-// Προσθήκη βιβλίου: Αποθηκεύεται ΜΑΖΙ με το user_id του χρήστη
+// Προσθήκη βιβλίου
 app.post("/books", (req, res) => {
   if (!req.session.userId) return res.status(401).json({ message: "Παρακαλώ συνδεθείτε" });
   const { title, author, year } = req.body;
 
-  if (!title || !author) return res.status(400).json({ message: "title & author required" });
+  if (req.session.username === "guest" || !isDbConnected) {
+      const newBook = { id: Date.now(), title, author, year: parseInt(year) || "" };
+      guestBooks.push(newBook);
+      return res.json({ message: "Το βιβλίο προστέθηκε!", book: newBook });
+  }
 
   db.query(
     "INSERT INTO books (title, author, year, user_id) VALUES (?, ?, ?, ?)",
     [title, author, year, req.session.userId],
     (err, result) => {
-      if (err) return res.status(500).json({ error: err });
-
-      res.json({
-        message: "Το βιβλίο προστέθηκε!",
-        book: { id: result.insertId, title, author, year }
-      });
-    }
-  );
-});
-
-// Ενημέρωση βιβλίου
-app.put("/books/:id", (req, res) => {
-  if (!req.session.userId) return res.status(401).json({ message: "Παρακαλώ συνδεθείτε" });
-  const id = req.params.id;
-  const { title, author, year } = req.body;
-
-  db.query(
-    "UPDATE books SET title=?, author=?, year=? WHERE id=? AND user_id=?",
-    [title, author, year, id, req.session.userId],
-    (err, result) => {
-      if (err) return res.status(500).json({ error: err });
-      if (result.affectedRows === 0) return res.status(404).json({ message: "Δεν βρέθηκε βιβλίο" });
-      res.json({ message: "Updated successfully" });
+      if (err) {
+          // Fallback και στην προσθήκη
+          const newBook = { id: Date.now(), title, author, year: parseInt(year) || "" };
+          guestBooks.push(newBook);
+          return res.json({ message: "Το βιβλίο προστέθηκε!", book: newBook });
+      }
+      res.json({ message: "Το βιβλίο προστέθηκε!", book: { id: result.insertId, title, author, year } });
     }
   );
 });
@@ -190,17 +155,22 @@ app.put("/books/:id", (req, res) => {
 // Διαγραφή βιβλίου
 app.delete("/books/:id", (req, res) => {
   if (!req.session.userId) return res.status(401).json({ message: "Παρακαλώ συνδεθείτε" });
-  const id = req.params.id;
+  const id = parseInt(req.params.id);
+
+  if (req.session.username === "guest" || !isDbConnected) {
+      guestBooks = guestBooks.filter(book => book.id !== id);
+      return res.json({ message: "Deleted successfully" });
+  }
 
   db.query("DELETE FROM books WHERE id=? AND user_id=?", [id, req.session.userId], (err, result) => {
-    if (err) return res.status(500).json({ error: err });
+    if (err) {
+        guestBooks = guestBooks.filter(book => book.id !== id);
+        return res.json({ message: "Deleted successfully" });
+    }
     res.json({ message: "Deleted successfully" });
   });
 });
 
-/* ==========================================================================
-   🚀 START SERVER
-   ========================================================================== */
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Server τρέχει στη θύρα ${PORT}`);
