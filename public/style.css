@@ -7,19 +7,20 @@ body {
 
 /* LOGIN */
 #auth-container {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.6);
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    position: absolute; /* Για να μπει στη γωνία */
+    top: 10px;
+    right: 10px;
+    z-index: 1000;      /* Για να είναι πάνω από όλα */
+    background: transparent; /* Χωρίς γκρι φόντο */
 }
 
 .auth-box {
     background: white;
-    padding: 25px;
-    border-radius: 10px;
-    width: 300px;
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    display: flex;
+    gap: 5px;
 }
 
 /* MAIN */
@@ -29,7 +30,7 @@ body {
     background: white;
     padding: 30px;
     border-radius: 12px;
-    
+    display: block;
 }
 
 /* FORM */
