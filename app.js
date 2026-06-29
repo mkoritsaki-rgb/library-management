@@ -44,16 +44,19 @@ app.get("/logout", (req, res) => {
 
 // Ανάκτηση Βιβλίων
 app.get("/books", (req, res) => {
-    if (!req.session.username) return res.json([]);
-    
-    // Εδώ βεβαιώσου ότι τα ονόματα των στηλών είναι ακριβώς: title, author, year
-    db.query("SELECT id, title, author, year FROM books WHERE username = ?", [req.session.username], (err, results) => {
-        if (err) {
-            console.error("SQL Error in GET:", err);
-            return res.status(500).json({ error: "Database error" });
-        }
-        res.json(results || []);
-    });
+    // Αν υπάρχει username στο session, δείχνουμε τα δικά του βιβλία
+    if (req.session.username) {
+        const sql = "SELECT * FROM books WHERE username = ?";
+        db.query(sql, [req.session.username], (err, results) => {
+            res.json(results);
+        });
+    } else {
+        // Αν είναι Guest (Portfolio), δείχνουμε μόνο τα βιβλία της "Mary"
+        const sql = "SELECT * FROM books WHERE username = 'Mary'";
+        db.query(sql, (err, results) => {
+            res.json(results);
+        });
+    }
 });
 
 // Προσθήκη Βιβλίου
