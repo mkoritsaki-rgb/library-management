@@ -1,6 +1,13 @@
 /* Γενικά */
 body { font-family: 'Georgia', serif; background-color: #f0fff0; margin: 0; padding: 20px; color: #2c3e50; }
-
+button {
+    background-color: #8e44ad; /* Χρώμα κουμπιού */
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+}
 /* Το κεντρικό κουτί (μαζεμένο στο κέντρο) */
 .container { 
     max-width: 800px; 
