@@ -1,78 +1,124 @@
 <!DOCTYPE html>
 <html lang="el">
 <head>
-    <meta charset="UTF-8">
-    <title>Smart Library</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Library</title>
+<link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
+<!-- LOGIN -->
 <div id="auth-container">
-    <input type="text" id="username" placeholder="Username">
-    <button onclick="login()">Σύνδεση</button>
+    <div class="auth-box">
+        <h2>Login</h2>
+        <input type="text" id="username" placeholder="Όνομα χρήστη">
+        <button onclick="login()">Σύνδεση</button>
+    </div>
 </div>
 
-<div id="library" style="display:none;">
-    <h2 id="user-display"></h2>
-    <button onclick="logout()">Αποσύνδεση</button>
-    <form id="bookform">
-    <input type="text" id="title" placeholder="Τίτλος" required>
-    <input type="text" id="author" placeholder="Συγγραφέας" required>
-    <input type="number" id="year" placeholder="Έτος" required> <button type="submit">Προσθήκη</button>
-</form>
-    <ul id="bookList"></ul>
+<!-- MAIN APP -->
+<div id="library" class="container">
+
+    <h1>📚 Smart Library 📚</h1>
+    <p id="user-display"></p>
+
+    <section class="add-book">
+        <h2>Προσθήκη Βιβλίου</h2>
+
+        <form id="bookform">
+            <input type="text" id="title" placeholder="Τίτλος" required>
+            <input type="text" id="author" placeholder="Συγγραφέας" required>
+            <input type="number" id="year" placeholder="Έτος" required>
+            <button type="submit">Προσθήκη</button>
+        </form>
+    </section>
+
+    <section class="books-list">
+        <h2>Η Συλλογή μου</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Τίτλος</th>
+                    <th>Συγγραφέας</th>
+                    <th>Έτος</th>
+                    <th>Ενέργειες</th>
+                </tr>
+            </thead>
+
+            <tbody id="bookList"></tbody>
+        </table>
+    </section>
+
+    <button onclick="logout()">Logout</button>
 </div>
 
 <script>
-    async function login() {
-        const username = document.getElementById("username").value;
-        await fetch("/login", { 
-            method: "POST", 
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({username}) 
-        });
-        location.reload();
-    }
+async function login() {
+    const username = document.getElementById("username").value;
 
-    async function checkAuth() {
-        const res = await fetch("/check-auth");
-        const data = await res.json();
-        if (data.authenticated) {
-            document.getElementById("auth-container").style.display = "none";
-            document.getElementById("library").style.display = "block";
-            document.getElementById("user-display").innerText = "Καλώς ήρθες " + data.username;
-            loadBooks();
-        }
-    }
+    await fetch("/login", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ username })
+    });
 
-   async function loadBooks() {
-        const res = await fetch("/books");
-        const books = await res.json();
-        
-        // Εδώ ακριβώς γίνεται η αλλαγή:
-        document.getElementById("bookList").innerHTML = books.map(b => 
-            `<li>${b.title} από ${b.author}, έτος: ${b.year}</li>`
-        ).join('');
+    checkAuth();
+}
+
+async function checkAuth() {
+    const res = await fetch("/check-auth");
+    const data = await res.json();
+
+    if (data.authenticated) {
+        document.getElementById("auth-container").style.display = "none";
+        document.getElementById("library").style.display = "block";
+        document.getElementById("user-display").innerText =
+            "Καλώς ήρθες " + data.username;
+
+        loadBooks();
     }
-    document.getElementById("bookform").addEventListener("submit", async (e) => {
+}
+
+async function loadBooks() {
+    const res = await fetch("/books");
+    const books = await res.json();
+
+    document.getElementById("bookList").innerHTML = books.map(b => `
+        <tr>
+            <td>${b.title}</td>
+            <td>${b.author}</td>
+            <td>${b.year}</td>
+            <td>🗑️</td>
+        </tr>
+    `).join('');
+}
+
+document.getElementById("bookform").addEventListener("submit", async (e) => {
     e.preventDefault();
+
     await fetch("/books", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({
             title: document.getElementById("title").value,
             author: document.getElementById("author").value,
-            year: document.getElementById("year").value // Προσθήκη του year
+            year: document.getElementById("year").value
         })
     });
+
     loadBooks();
 });
 
-    async function logout() {
-        await fetch("/logout");
-        location.reload();
-    }
+async function logout() {
+    await fetch("/logout");
+    location.reload();
+}
 
-    checkAuth();
+checkAuth();
 </script>
+
 </body>
 </html>
