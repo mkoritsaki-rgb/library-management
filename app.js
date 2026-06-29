@@ -3,6 +3,13 @@ const mysql = require('mysql2');
 const session = require('express-session');
 const app = express();
 
+const db = mysql.createConnection({
+    host: process.env.DB_HOST || 'bjntcif47a8lijewmwxx-mysql.services.clever-cloud.com', 
+    user: process.env.DB_USER || 'uwnoosni3svl2uw5',
+    password: process.env.DB_PASSWORD || 'fwqBvO9UjW7e3UrrKjIk',
+    database: process.env.DB_NAME || 'bjntcif47a8lijewmwxx'
+});
+
 app.use(express.json());
 app.use(express.static('public'));
 
@@ -12,12 +19,6 @@ app.use(session({
     saveUninitialized: true 
 }));
 
-const db = mysql.createConnection({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME
-});
 
 // Έλεγχος ταυτότητας
 app.get("/check-auth", (req, res) => {
