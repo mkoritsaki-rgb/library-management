@@ -44,12 +44,15 @@
         }
     }
 
-    async function loadBooks() {
+   async function loadBooks() {
         const res = await fetch("/books");
         const books = await res.json();
-        document.getElementById("bookList").innerHTML = books.map(b => `<li>${b.title} από ${b.author}</li>`).join('');
+        
+        // Εδώ ακριβώς γίνεται η αλλαγή:
+        document.getElementById("bookList").innerHTML = books.map(b => 
+            `<li>${b.title} από ${b.author}, έτος: ${b.year}</li>`
+        ).join('');
     }
-
     document.getElementById("bookform").addEventListener("submit", async (e) => {
     e.preventDefault();
     await fetch("/books", {
