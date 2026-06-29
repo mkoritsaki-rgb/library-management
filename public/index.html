@@ -26,7 +26,6 @@
 </div>
 
 <div id="main-library-content" style="display: none;">
-    <!-- Το καλωσόρισμα και το Logout μπαίνουν δυναμικά εδώ χωρίς διπλογραφές -->
     <div style="text-align: right; margin-bottom: 20px; padding: 10px;" id="welcome-user">
     </div>
 
@@ -34,7 +33,7 @@
         <header>
             <h1>📚 Smart Library 📚</h1>
             <p class="intro-text">
-                Καλώς ορίσατε στον προσωπικό σας ψηφιακό λογοτεχνικό καταφύγιο. Έναν χώρο σχεδιασμένο για να οργανώνετε τα βιβλία σας, να καταγράφετε τις συλλογές σας και να κρατάτε ζωντανή την αγάπη σας για το διάβασμα. Κάθε βιβλίο έχει τη δική του θέση στην ιστορία, και τώρα έχει τη δική του θέση και στη βάση μας.
+                Καλώς ορίσατε στον προσωπικό σας ψηφιακό λογοτεχνικό καταφύγιο. Έναν χώρο σχεδιασμένο για να οργανώνετε τα βιβλία σας, να καταγράφετε τις συλλογές σας και να κρατάτε ζωντανή την αγάπη σας για το διάβασμα. Κάθε βιβλίο έχει τη δική του θέση στην ιστορία, and τώρα έχει τη δική του θέση και στη βάση μας.
             </p>
             <img src="https://images.unsplash.com/photo-1507842217343-583bb7270b66?q=80&w=1000&auto=format&fit=crop" alt="Cozy Library" class="library-img">
         </header>
@@ -94,7 +93,6 @@
             if (data.authenticated) {
                 showLibrary(data.username);
             } else {
-                // Αν δεν είναι συνδεδεμένος, μπαίνει αυτόματα ως Guest
                 autoGuestLogin();
             }
         } catch (error) {
@@ -114,11 +112,9 @@
             
             if (response.ok) {
                 showLibrary(data.username);
-                // Αν ερχόμαστε από Logout, ελέγχουμε αν θέλουμε να ανοίξει το παράθυρο
                 if (openModalAfter) {
                     document.getElementById("auth-container").style.display = "flex";
                 } else {
-                    // 🔥 ΕΞΑΣΦΑΛΙΖΟΥΜΕ ότι το παράθυρο κλείνει όταν μπαίνει ως Guest!
                     document.getElementById("auth-container").style.display = "none";
                 }
             } else {
@@ -141,10 +137,11 @@
             welcomeSpan.innerHTML = `🌟 Καλώς όρισες, <strong>${username}</strong>! | <a href="#" onclick="logout(event)" style="color: #ff4d4d; text-decoration: underline; margin-left: 10px; font-weight: bold;">Αποσύνδεση</a>`;
         }
         
+        // Φορτώνουμε τα βιβλία του συγκεκριμένου χρήστη
         loadBooks();
     }
 
-    // Άνοιγμα του Auth Modal χειροκίνητα
+    // Άνοιγμα του Auth Modal
     function openAuthModal(e) {
         if (e) e.preventDefault();
         document.getElementById("auth-container").style.display = "flex";
@@ -185,6 +182,9 @@
         const endpoint = isLoginMode ? "/login" : "/register";
 
         try {
+            // 🔥 Καθαρίζουμε τον πίνακα οπτικά ΠΡΙΝ το request για να μην βλέπουμε τα παλιά βιβλία
+            document.getElementById("bookList").innerHTML = `<tr><td colspan="4">Φόρτωση βιβλίων...</td></tr>`;
+
             const response = await fetch(endpoint, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -194,6 +194,8 @@
 
             if (!response.ok) {
                 msgDiv.innerText = data.message || "Κάτι πήγε στραβά.";
+                // Αν αποτύχει, ξαναφορτώνουμε τα βιβλία του guest που είχαμε
+                loadBooks();
                 return;
             }
 
@@ -204,23 +206,28 @@
             } else {
                 alert("Η εγγραφή πέτυχε! Τώρα μπορείτε να συνδεθείτε.");
                 toggleAuthMode({ preventDefault: () => {} });
+                loadBooks();
             }
         } catch (error) {
             msgDiv.innerText = "Σφάλμα επικοινωνίας με τον διακομιστή.";
+            loadBooks();
         }
     }
 
-    // 🔥 Αποσύνδεση: Σε γυρίζει σε Guest και ΚΛΕΙΝΕΙ το παράθυρο αμέσως χωρίς refresh!
+    // Αποσύνδεση
     async function logout(e) {
         if (e) e.preventDefault();
         try {
+            // 🔥 Καθαρίζουμε τον πίνακα οπτικά για να μην «κρέμονται» τα βιβλία του χρήστη
+            document.getElementById("bookList").innerHTML = `<tr><td colspan="4">Φόρτωση βιβλίων...</td></tr>`;
+
             await fetch("/logout");
             
             document.getElementById("auth-username").value = "";
             document.getElementById("auth-password").value = "";
             document.getElementById("auth-message").innerText = "";
             
-            // Καλούμε το autoGuestLogin με false για να κλείσει το παράθυρο σύνδεσης!
+            // Επιστρέφουμε σε Guest και το autoGuestLogin θα καλέσει τη showLibrary -> loadBooks()
             autoGuestLogin(false);
 
         } catch (error) {
@@ -257,6 +264,7 @@
             });
         } catch (error) {
             console.error("Σφάλμα κατά τη φόρτωση των βιβλίων:", error);
+            document.getElementById("bookList").innerHTML = `<tr><td colspan="4">Σφάλμα κατά τη φόρτωση.</td></tr>`;
         }
     }
 
