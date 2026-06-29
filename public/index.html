@@ -4,30 +4,34 @@
     <meta charset="UTF-8">
     <title>Η Βιβλιοθήκη μου</title>
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 20px; }
-        img { max-width: 500px; border-radius: 10px; margin: 20px 0; }
-        #auth-container { margin: 20px; }
-        #library { margin-top: 30px; }
-        table { margin: 20px auto; border-collapse: collapse; width: 80%; }
-        td, th { border: 1px solid #ddd; padding: 8px; }
+        body { font-family: sans-serif; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ccc; padding-bottom: 10px; }
+        .hero-img { width: 100%; max-height: 300px; object-fit: cover; margin: 20px 0; }
+        #auth-container { text-align: right; }
+        #library { margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        td, th { border: 1px solid #ddd; padding: 10px; text-align: left; }
     </style>
 </head>
 <body>
 
-    <h1>Η Ψηφιακή μου Βιβλιοθήκη</h1>
-    <img src="https://www.lifo.gr/sites/default/files/styles/lifo_large/public/2020-04/books-1281581_1920.jpg" alt="Βιβλία">
-
-    <div id="auth-container">
-        <input type="text" id="username" placeholder="Όνομα Χρήστη">
-        <button onclick="login()">Σύνδεση</button>
+    <div class="header">
+        <h1>Η Ψηφιακή μου Βιβλιοθήκη</h1>
+        <div id="auth-container">
+            <input type="text" id="username" placeholder="Όνομα Χρήστη" size="10">
+            <button onclick="login()">Σύνδεση</button>
+        </div>
+        <div id="user-info" style="display: none;">
+            <span id="user-display"></span>
+            <button onclick="logout()">Αποσύνδεση</button>
+        </div>
     </div>
 
-    <div id="library" style="display: none;">
-        <h2 id="user-display"></h2>
-        <button onclick="logout()">Αποσύνδεση</button>
+    <img src="https://images.unsplash.com/photo-1507842217343-583bb7270b66" class="hero-img" alt="Βιβλιοθήκη">
 
-        <h3>Προσθήκη νέου βιβλίου</h3>
-        <form id="bookform">
+    <div id="library">
+        <form id="bookform" style="display: none;">
+            <h3>Προσθήκη Βιβλίου</h3>
             <input type="text" id="title" placeholder="Τίτλος" required>
             <input type="text" id="author" placeholder="Συγγραφέας" required>
             <input type="number" id="year" placeholder="Έτος" required>
@@ -41,26 +45,25 @@
     </div>
 
     <script>
-        // Εδώ μπαίνει το script που φτιάξαμε προηγουμένως (login, checkAuth, loadBooks, logout)
-        async function login() {
-            const username = document.getElementById("username").value;
-            await fetch("/login", { 
-                method: "POST", 
-                headers: {"Content-Type": "application/json"}, 
-                body: JSON.stringify({ username }) 
-            });
-            checkAuth();
-        }
-
         async function checkAuth() {
             const res = await fetch("/check-auth");
             const data = await res.json();
+            
+            // Εμφάνιση/Κρύψιμο ανάλογα με το login
             document.getElementById("auth-container").style.display = data.authenticated ? "none" : "block";
-            document.getElementById("library").style.display = data.authenticated ? "block" : "none";
+            document.getElementById("user-info").style.display = data.authenticated ? "block" : "none";
+            document.getElementById("bookform").style.display = data.authenticated ? "block" : "none";
+            
             if (data.authenticated) {
                 document.getElementById("user-display").innerText = "Καλώς ήρθες " + data.username;
                 loadBooks();
             }
+        }
+
+        async function login() {
+            const username = document.getElementById("username").value;
+            await fetch("/login", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ username }) });
+            location.reload();
         }
 
         async function loadBooks() {
@@ -74,13 +77,8 @@
         document.getElementById("bookform").addEventListener("submit", async (e) => {
             e.preventDefault();
             await fetch("/books", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({
-                    title: document.getElementById("title").value,
-                    author: document.getElementById("author").value,
-                    year: document.getElementById("year").value
-                })
+                method: "POST", headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({ title: document.getElementById("title").value, author: document.getElementById("author").value, year: document.getElementById("year").value })
             });
             loadBooks();
         });
