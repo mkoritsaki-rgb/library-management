@@ -14,7 +14,7 @@ app.use(session({
 app.use(express.static("public"));
 
 /* ==========================================================================
-   🗄️ MYSQL CONNECTION & GUEST STORAGE
+   🗄️ MYSQL CONNECTION & AUTO-TABLE CREATION
    ========================================================================== */
 let isDbConnected = false;
 
@@ -34,22 +34,52 @@ db.connect((err) => {
   }
   console.log("✅ Συνδέθηκε στη MySQL!");
   isDbConnected = true;
+
+  // 🔥 Αυτόματη δημιουργία πινάκων για να μη χρησιμοποιείς το phpMyAdmin
+  const createUsersTable = `
+    CREATE TABLE IF NOT EXISTS users (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      username VARCHAR(255) NOT NULL UNIQUE,
+      password VARCHAR(255) NOT NULL
+    );
+  `;
+
+  const createBooksTable = `
+    CREATE TABLE IF NOT EXISTS books (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      author VARCHAR(255) NOT NULL,
+      year INT,
+      user_id INT,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+  `;
+
+  db.query(createUsersTable, (err) => {
+    if (err) console.error("Σφάλμα στον πίνακα users:", err.message);
+    else {
+      db.query(createBooksTable, (err) => {
+        if (err) console.error("Σφάλμα στον πίνακα books:", err.message);
+        else console.log("📊 Οι πίνακες της βάσης (users & books) είναι έτοιμοι!");
+      });
+    }
+  });
 });
 
-// Εικονική βάση δεδομένων για να παίζει ΤΕΛΕΙΑ το demo σου πάντα!
+// Εικονική βάση δεδομένων για το Guest Mode
 let guestBooks = [
     { id: 1, title: "Το Μυστικό", author: "Rhonda Byrne", year: 2006 },
     { id: 2, title: "Νεφέλη και η Μαγική Βροχή", author: "Μαίρη Κάντα", year: 2024 }
 ];
 
 /* ==========================================================================
-   🔒 AUTHENTICATION ENDPOINTS
+   🔒 AUTHENTICATION ENDPOINTS (ΔΙΟΡΘΩΜΕΝΑ)
    ========================================================================== */
 
 app.post("/register", async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ message: "Username και password υποχρεωτικά" });
-    if (!isDbConnected) return res.status(400).json({ message: "Η βάση είναι offline. Δοκιμάστε ως Guest." });
+    if (!isDbConnected) return res.status(400).json({ message: "Η βάση είναι offline. Δοκιμάστε να συνδεθείτε ως Guest γράφοντας guest." });
 
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -65,11 +95,15 @@ app.post("/register", async (req, res) => {
 app.post("/login", (req, res) => {
     const { username, password } = req.body;
 
-    // Αν είναι guest Ή αν η βάση είναι offline, τους συνδέει ως guest αυτόματα!
-    if (username === "guest" || !isDbConnected) {
+    // Ελεγχόμενη είσοδος Guest: Μπαίνει ΜΟΝΟ αν το πληκτρολογήσει ο χρήστης
+    if (username === "guest") {
         req.session.userId = 9999; 
         req.session.username = "guest";
         return res.json({ message: "Συνδέθηκες ως Guest!", username: "guest" });
+    }
+
+    if (!isDbConnected) {
+        return res.status(400).json({ message: "Η βάση είναι offline. Πληκτρολογήστε 'guest' στο username για να περιηγηθείτε." });
     }
 
     db.query("SELECT * FROM users WHERE username = ?", [username], async (err, results) => {
@@ -78,7 +112,7 @@ app.post("/login", (req, res) => {
 
         const user = results[0];
         const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) return res.status(400).json({ message: "Λάσης username ή password" });
+        if (!isMatch) return res.status(400).json({ message: "Λάθος username ή password" });
 
         req.session.userId = user.id;
         req.session.username = user.username;
@@ -87,16 +121,14 @@ app.post("/login", (req, res) => {
 });
 
 app.get("/logout", (req, res) => {
-    req.session.destroy(() => { res.json({ message: "Αποσυνδέθηκες!" }); });
+    req.session.destroy(() => { 
+        res.clearCookie('connect.sid'); // Καθαρίζει το cookie για σίγουρη αποσύνδεση
+        res.json({ message: "Αποσυνδέθηκες!" }); 
+    });
 });
 
 app.get("/check-auth", (req, res) => {
-    // Αν δεν υπάρχει session αλλά η βάση είναι offline, τον κάνουμε auto-login εδώ
-    if (!req.session.userId && !isDbConnected) {
-        req.session.userId = 9999;
-        req.session.username = "guest";
-    }
-
+    // ΑΦΑΙΡΕΘΗΚΕ ΤΟ ΑΥΤΟΜΑΤΟ GUEST LOGIN ΓΙΑ ΝΑ ΜΗΝ ΚΟΛΛΑΕΙ Η ΑΠΟΣΥΝΔΕΣΗ
     if (req.session.userId) {
         res.json({ authenticated: true, username: req.session.username });
     } else {
@@ -105,28 +137,22 @@ app.get("/check-auth", (req, res) => {
 });
 
 /* ==========================================================================
-   📚 BOOKS ENDPOINTS (ΜΕ ΑΥΤΟΜΑΤΟ FALLBACK ΣΕ GUEST)
+   📚 BOOKS ENDPOINTS
    ========================================================================== */
 
-// Λίστα βιβλίων
 app.get("/books", (req, res) => {
   if (!req.session.userId) return res.status(401).json({ message: "Παρακαλώ συνδεθείτε" });
 
-  // Αν ο χρήστης είναι guest Ή αν η βάση αποσυνδέθηκε, δώσε τα guestBooks
   if (req.session.username === "guest" || !isDbConnected) {
       return res.json(guestBooks);
   }
 
   db.query("SELECT * FROM books WHERE user_id = ?", [req.session.userId], (err, results) => {
-    if (err) {
-        // Αν κρασάρει η query, δώσε τα guestBooks αντί για σφάλμα 500!
-        return res.json(guestBooks);
-    }
+    if (err) return res.json(guestBooks);
     res.json(results);
   });
 });
 
-// Προσθήκη βιβλίου
 app.post("/books", (req, res) => {
   if (!req.session.userId) return res.status(401).json({ message: "Παρακαλώ συνδεθείτε" });
   const { title, author, year } = req.body;
@@ -142,7 +168,6 @@ app.post("/books", (req, res) => {
     [title, author, year, req.session.userId],
     (err, result) => {
       if (err) {
-          // Fallback και στην προσθήκη
           const newBook = { id: Date.now(), title, author, year: parseInt(year) || "" };
           guestBooks.push(newBook);
           return res.json({ message: "Το βιβλίο προστέθηκε!", book: newBook });
@@ -152,7 +177,6 @@ app.post("/books", (req, res) => {
   );
 });
 
-// Διαγραφή βιβλίου
 app.delete("/books/:id", (req, res) => {
   if (!req.session.userId) return res.status(401).json({ message: "Παρακαλώ συνδεθείτε" });
   const id = parseInt(req.params.id);
