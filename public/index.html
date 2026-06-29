@@ -26,9 +26,7 @@
 </div>
 
 <div id="main-library-content" style="display: none;">
-    <div style="text-align: right; margin-bottom: 20px; padding: 10px;">
-        <span id="welcome-user"></span> 
-        <button onclick="logout()" style="background-color: #ff4d4d; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px; margin-left: 10px;">Αποσύνδεση</button>
+    <div style="text-align: right; margin-bottom: 20px; padding: 10px;" id="welcome-user">
     </div>
 
     <div class="container">
@@ -95,7 +93,7 @@
             if (data.authenticated) {
                 showLibrary(data.username);
             } else {
-                // 🚀 Εδώ είναι το portfolio σου: Αν δεν είναι συνδεδεμένος, μπαίνει ΑΥΤΟΜΑΤΑ ως Guest!
+                // Αν δεν είναι συνδεδεμένος, μπαίνει αυτόματα ως Guest για το Portfolio
                 autoGuestLogin();
             }
         } catch (error) {
@@ -103,7 +101,7 @@
         }
     }
 
-    // 🚀 Αυτόματο Login ως Guest
+    // Αυτόματο Login ως Guest
     async function autoGuestLogin(openModalAfter = false) {
         try {
             const response = await fetch("/login", {
@@ -115,7 +113,7 @@
             
             if (response.ok) {
                 showLibrary(data.username);
-                // 🔥 Αν ερχόμαστε από Logout, του ανοίγουμε αυτόματα το παράθυρο Σύνδεσης!
+                // Αν ερχόμαστε από Logout, ανοίγουμε αυτόματα το παράθυρο σύνδεσης
                 if (openModalAfter) {
                     document.getElementById("auth-container").style.display = "flex";
                 }
@@ -129,7 +127,6 @@
 
     // Εμφάνιση της βιβλιοθήκης στην οθόνη
     function showLibrary(username) {
-        // Κρύβουμε το modal αρχικά (εκτός αν το ζητήσουμε)
         document.getElementById("auth-container").style.display = "none";
         document.getElementById("main-library-content").style.display = "block";
         
@@ -137,14 +134,13 @@
         if (username === "guest") {
             welcomeSpan.innerHTML = `👤 Επισκέπτης (Guest) | <a href="#" onclick="openAuthModal(event)" style="color: #2ecc71; text-decoration: underline; font-weight: bold;">Δημιουργία Λογαριασμού / Σύνδεση</a>`;
         } else {
-            welcomeSpan.innerHTML = `🌟 Καλώς όρισες, <strong>${username}</strong>! | <a href="#" onclick="logout(event)" style="color: #ff4d4d; text-decoration: underline; margin-left: 10px;">Αποσύνδεση</a>`;
+            welcomeSpan.innerHTML = `🌟 Καλώς όρισες, <strong>${username}</strong>! | <a href="#" onclick="logout(event)" style="color: #ff4d4d; text-decoration: underline; margin-left: 10px; font-weight: bold;">Αποσύνδεση</a>`;
         }
         
-        // Φόρτωση των βιβλίων με ασφάλεια
         loadBooks();
     }
 
-    // Άνοιγμα του Auth Modal (είτε από το κουμπί είτε από το Logout)
+    // Άνοιγμα του Auth Modal
     function openAuthModal(e) {
         if (e) e.preventDefault();
         document.getElementById("auth-container").style.display = "flex";
@@ -210,21 +206,20 @@
         }
     }
 
-    // 🛑 Αποσύνδεση (Έξυπνη: Σε βγάζει, σε γυρίζει σε Guest, αλλά σου ανοίγει τη φόρμα!)
+    // Αποσύνδεση
     async function logout(e) {
         if (e) e.preventDefault();
         try {
             await fetch("/logout");
             
-            // Καθαρίζουμε τα πεδία κειμένου
             document.getElementById("auth-username").value = "";
             document.getElementById("auth-password").value = "";
             
-            // Ξαναμπαίνει ως guest για να φαίνονται τα βιβλία, αλλά του πετάμε το Modal να συνδεθεί!
+            // Ξαναμπαίνει ως guest αυτόματα, αλλά πετάει το modal για νέα σύνδεση
             autoGuestLogin(true);
             
             setTimeout(() => {
-                document.getElementById("auth-message").innerText = "Αποσυνδεθήκατε. Συνδεθείτε με άλλο λογαριασμό.";
+                document.getElementById("auth-message").innerText = "Αποσυνδεθήκατε. Σύνδεση με άλλο λογαριασμό.";
             }, 500);
 
         } catch (error) {
@@ -305,8 +300,9 @@
         }
     }
 
-    // 🚀 ΕΚΚΙΝΗΣΗ ΡΟΗΣ
+    // ΕΚΚΙΝΗΣΗ ΡΟΗΣ
     checkAuth();
 </script>
+
 </body>
 </html>
