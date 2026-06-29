@@ -5,15 +5,21 @@ const app = express();
 
 app.use(express.json());
 app.use(express.static('public'));
-app.use(session({ secret: 'secret', resave: false, saveUninitialized: true }));
+
+app.use(session({ 
+    secret: 'secret-key-123', 
+    resave: false, 
+    saveUninitialized: true 
+}));
 
 const db = mysql.createConnection({
-    host: 'bjntcif47a8lijewmwxx-mysql.services.clever-cloud.com',
-    user: 'uwnoosni3svl2uw5',
-    password: 'fwqBvO9UjW7e3UrrKjIk',
-    database: 'bjntcif47a8lijewmwxx'
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME
 });
 
+// Έλεγχος ταυτότητας
 app.get("/check-auth", (req, res) => {
     if (req.session.username) {
         res.json({ authenticated: true, username: req.session.username });
@@ -21,33 +27,37 @@ app.get("/check-auth", (req, res) => {
         res.json({ authenticated: false });
     }
 });
-app.get("/books", (req, res) => {
-    const user = req.session.username;
-    if (!user) return res.json([]);
-    
-    if (user === 'guest') {
-        res.json([{id: 1, title: "Guest Book", author: "Admin", year: 2024}]);
-    } else {
-        // 🔥 ΕΔΩ ΕΙΝΑΙ Η ΑΛΛΑΓΗ: Πάντα φιλτράρουμε με το username!
-        db.query("SELECT * FROM books WHERE username = ?", [user], (err, results) => {
-            res.json(results || []);
-        });
-    }
+
+// Login
+app.post("/login", (req, res) => {
+    req.session.username = req.body.username;
+    req.session.save(); // Σημαντικό για να αποθηκευτεί το session
+    res.send({ success: true });
 });
 
-app.post("/books", (req, res) => {
-    if (!req.session.username) return res.status(401).send();
-    const book = { ...req.body, username: req.session.username }; // 🔥 ΑΠΟΘΗΚΕΥΣΗ ΜΕ USERNAME
-    db.query("INSERT INTO books SET ?", book, () => res.send());
-});
-
+// Logout
 app.get("/logout", (req, res) => {
     req.session.destroy();
-    res.send();
+    res.send({ success: true });
 });
 
-// Κρατάει τη βάση ζωντανή
-setInterval(() => {
-    db.query('SELECT 1');
-}, 5000);
-app.listen(3000);
+// Ανάκτηση Βιβλίων
+app.get("/books", (req, res) => {
+    if (!req.session.username) return res.json([]);
+    db.query("SELECT * FROM books WHERE username = ?", [req.session.username], (err, results) => {
+        if (err) return res.status(500).send(err);
+        res.json(results || []);
+    });
+});
+
+// Προσθήκη Βιβλίου
+app.post("/books", (req, res) => {
+    if (!req.session.username) return res.status(401).send();
+    const book = { ...req.body, username: req.session.username };
+    db.query("INSERT INTO books SET ?", book, (err) => {
+        if (err) return res.status(500).send(err);
+        res.send({ success: true });
+    });
+});
+
+app.listen(3000, () => console.log("Server running on port 3000"));

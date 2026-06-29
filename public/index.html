@@ -2,76 +2,72 @@
 <html lang="el">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart Library</title>
-    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <div id="auth-container">
-    <div class="auth-box">
-        <h2 id="auth-title">Σύνδεση στη Βιβλιοθήκη</h2>
-        <div id="auth-message" style="color: red; margin-bottom: 10px;"></div>
-        <input type="text" id="auth-username" placeholder="Username">
-        <input type="password" id="auth-password" placeholder="Password">
-        <button id="auth-main-btn" onclick="handleAuth()">Σύνδεση</button>
-        <p id="auth-toggle-text"><a href="#" onclick="toggleAuthMode(event)">Εγγραφείτε εδώ</a></p>
-    </div>
+    <input type="text" id="username" placeholder="Username">
+    <button onclick="login()">Σύνδεση</button>
 </div>
 
-<div id="main-library-content" style="display: none;">
-    <div style="text-align: right; margin-bottom: 20px; padding: 10px;" id="welcome-user"></div>
-    <div class="container">
-        <h1>📚 Smart Library 📚</h1>
-        <form id="bookform">
-            <input type="text" id="title" placeholder="Τίτλος" required>
-            <input type="text" id="author" placeholder="Συγγραφέας" required>
-            <input type="number" id="year" placeholder="Έτος" required>
-            <button type="submit">Προσθήκη</button>
-        </form>
-        <table>
-            <thead><tr><th>Τίτλος</th><th>Συγγραφέας</th><th>Έτος</th><th>Ενέργειες</th></tr></thead>
-            <tbody id="bookList"></tbody>
-        </table>
-    </div>
+<div id="library" style="display:none;">
+    <h2 id="user-display"></h2>
+    <button onclick="logout()">Αποσύνδεση</button>
+    <form id="bookform">
+        <input type="text" id="title" placeholder="Τίτλος" required>
+        <input type="text" id="author" placeholder="Συγγραφέας" required>
+        <button type="submit">Προσθήκη</button>
+    </form>
+    <ul id="bookList"></ul>
 </div>
 
 <script>
-    let isLoginMode = true;
+    async function login() {
+        const username = document.getElementById("username").value;
+        await fetch("/login", { 
+            method: "POST", 
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({username}) 
+        });
+        location.reload();
+    }
 
     async function checkAuth() {
         const res = await fetch("/check-auth");
         const data = await res.json();
-        if (data.authenticated) showLibrary(data.username);
-        else autoGuestLogin();
-    }
-
-    async function autoGuestLogin() {
-        await fetch("/login", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({username: "guest", password: "guest123"}) });
-        showLibrary("guest");
-    }
-
-    function showLibrary(username) {
-        document.getElementById("auth-container").style.display = "none";
-        document.getElementById("main-library-content").style.display = "block";
-        const welcome = document.getElementById("welcome-user");
-        welcome.innerHTML = username === "guest" ? `👤 Επισκέπτης | <a href="#" onclick="openAuthModal()">Σύνδεση</a>` : `🌟 ${username} | <a href="#" onclick="logout()">Αποσύνδεση</a>`;
-        loadBooks();
-    }
-
-    async function logout() {
-        await fetch("/logout");
-        window.location.reload(); // 🔥 ΤΟ ΚΛΕΙΔΙ: Καθαρίζει τα πάντα με ανανέωση
+        if (data.authenticated) {
+            document.getElementById("auth-container").style.display = "none";
+            document.getElementById("library").style.display = "block";
+            document.getElementById("user-display").innerText = "Καλώς ήρθες " + data.username;
+            loadBooks();
+        }
     }
 
     async function loadBooks() {
         const res = await fetch("/books");
         const books = await res.json();
-        const tbody = document.getElementById("bookList");
-        tbody.innerHTML = books.map(b => `<tr><td>${b.title}</td><td>${b.author}</td><td>${b.year}</td><td><button onclick="deleteBook(${b.id})">Διαγραφή</button></td></tr>`).join('');
+        document.getElementById("bookList").innerHTML = books.map(b => `<li>${b.title} από ${b.author}</li>`).join('');
     }
 
-    // ... (τα υπόλοιπα handleAuth, toggleAuthMode, deleteBook παραμένουν ως έχουν)
+    document.getElementById("bookform").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        await fetch("/books", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                title: document.getElementById("title").value,
+                author: document.getElementById("author").value
+            })
+        });
+        loadBooks();
+    });
+
+    async function logout() {
+        await fetch("/logout");
+        location.reload();
+    }
+
     checkAuth();
 </script>
 </body>
