@@ -15,8 +15,33 @@ body { font-family: 'Georgia', serif; background-color: #f4f3ef; margin: 0; padd
 .library-img { width: 100%; height: auto; border-radius: 10px; margin-bottom: 20px; }
 
 /* Login (Πάνω δεξιά) */
-#auth-container { text-align: right; margin-bottom: 20px; padding: 10px; background: #f9f9f9; border-radius: 8px; }
+#auth-container {
+    width: 320px; /* Πλατύ όπως το θέλεις */
+    position: absolute; /* Το τοποθετούμε ελεύθερα */
+    top: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column; /* Τα στοιχεία το ένα κάτω από το άλλο */
+    gap: 10px;
+    padding: 15px;
+    background: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
 
+.auth-box {
+    display: flex;
+    gap: 10px;
+}
+
+#auth-container input {
+    flex: 1; /* Το input παίρνει όλο τον διαθέσιμο χώρο */
+}
+
+/* Για να φαίνεται το κουμπί Logout ξεχωριστά */
+#auth-container button.logout-btn {
+    background: #e74c3c; /* Κόκκινο για το Logout */
+}
 /* Φόρμα (Flex για να είναι στη σειρά) */
 form { display: flex; gap: 10px; margin-bottom: 30px; }
 input { padding: 12px; border: 1px solid #ddd; border-radius: 5px; flex: 1; }

@@ -8,19 +8,16 @@
 </head>
 <body>
 
-    <div class="container">
-        <div id="auth-container">
-            <div class="auth-box">
-                <h2>Login</h2>
-                <input type="text" id="username" placeholder="Όνομα χρήστη">
-                <button onclick="login()">Σύνδεση</button>
-            </div>
-            <p id="user-display"></p>
-            <button onclick="logout()">Logout</button>
+    <div id="auth-container">
+        <div class="auth-box">
+            <input type="text" id="username" placeholder="Όνομα χρήστη">
+            <button onclick="login()">Σύνδεση</button>
         </div>
+        <button onclick="logout()" class="logout-btn">Logout</button>
+    </div>
 
+    <div class="container">
         <img src="https://images.unsplash.com/photo-1507842217343-583bb7270b66" class="library-img">
-        
         <h1>📚 Smart Library 📚</h1>
 
         <section id="admin-area">
