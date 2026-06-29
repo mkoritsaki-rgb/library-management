@@ -26,6 +26,7 @@
 </div>
 
 <div id="main-library-content" style="display: none;">
+    <!-- Το καλωσόρισμα και το Logout μπαίνουν δυναμικά εδώ χωρίς διπλογραφές -->
     <div style="text-align: right; margin-bottom: 20px; padding: 10px;" id="welcome-user">
     </div>
 
@@ -93,7 +94,7 @@
             if (data.authenticated) {
                 showLibrary(data.username);
             } else {
-                // Αν δεν είναι συνδεδεμένος, μπαίνει αυτόματα ως Guest για το Portfolio
+                // Αν δεν είναι συνδεδεμένος, μπαίνει αυτόματα ως Guest
                 autoGuestLogin();
             }
         } catch (error) {
@@ -113,9 +114,12 @@
             
             if (response.ok) {
                 showLibrary(data.username);
-                // Αν ερχόμαστε από Logout, ανοίγουμε αυτόματα το παράθυρο σύνδεσης
+                // Αν ερχόμαστε από Logout, ελέγχουμε αν θέλουμε να ανοίξει το παράθυρο
                 if (openModalAfter) {
                     document.getElementById("auth-container").style.display = "flex";
+                } else {
+                    // 🔥 ΕΞΑΣΦΑΛΙΖΟΥΜΕ ότι το παράθυρο κλείνει όταν μπαίνει ως Guest!
+                    document.getElementById("auth-container").style.display = "none";
                 }
             } else {
                 console.error("Το backend απέρριψε τον guest:", data.message);
@@ -140,7 +144,7 @@
         loadBooks();
     }
 
-    // Άνοιγμα του Auth Modal
+    // Άνοιγμα του Auth Modal χειροκίνητα
     function openAuthModal(e) {
         if (e) e.preventDefault();
         document.getElementById("auth-container").style.display = "flex";
@@ -206,7 +210,7 @@
         }
     }
 
-    // Αποσύνδεση
+    // 🔥 Αποσύνδεση: Σε γυρίζει σε Guest και ΚΛΕΙΝΕΙ το παράθυρο αμέσως χωρίς refresh!
     async function logout(e) {
         if (e) e.preventDefault();
         try {
@@ -214,13 +218,10 @@
             
             document.getElementById("auth-username").value = "";
             document.getElementById("auth-password").value = "";
+            document.getElementById("auth-message").innerText = "";
             
-            // Ξαναμπαίνει ως guest αυτόματα, αλλά πετάει το modal για νέα σύνδεση
-            autoGuestLogin(true);
-            
-            setTimeout(() => {
-                document.getElementById("auth-message").innerText = "Αποσυνδεθήκατε. Σύνδεση με άλλο λογαριασμό.";
-            }, 500);
+            // Καλούμε το autoGuestLogin με false για να κλείσει το παράθυρο σύνδεσης!
+            autoGuestLogin(false);
 
         } catch (error) {
             console.error("Σφάλμα κατά την αποσύνδεση:", error);
