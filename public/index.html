@@ -13,7 +13,7 @@
             <input type="text" id="username" placeholder="Όνομα χρήστη">
             <button onclick="login()">Σύνδεση</button>
         </div>
-        <button onclick="logout()" class="logout-btn">Logout</button>
+        <button onclick="logout()">Αποσύνδεση</button>
     </div>
 
     <div class="container">
@@ -120,10 +120,15 @@ if (bookForm) {
 
 // Αποσύνδεση
 async function logout() {
-    await fetch("/logout");
-    location.reload();
+    try {
+        const res = await fetch("/logout"); // Καλεί το route στο app.js
+        if (res.ok) {
+            location.reload(); // Φρεσκάρει τη σελίδα και σε βγάζει στην αρχική κατάσταση (Login)
+        }
+    } catch (err) {
+        console.error("Σφάλμα κατά το logout:", err);
+    }
 }
-
 // Αρχική εκτέλεση
 checkAuth();
 loadBooks(); // Τρέχει πάντα για να φαίνονται τα δημόσια βιβλία
