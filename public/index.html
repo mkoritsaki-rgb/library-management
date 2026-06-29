@@ -95,17 +95,16 @@
             if (data.authenticated) {
                 showLibrary(data.username);
             } else {
-                // 🛑 Αν δεν είναι συνδεδεμένος, δείχνουμε τη φόρμα και κρύβουμε τη βιβλιοθήκη
-                document.getElementById("auth-container").style.display = "flex";
-                document.getElementById("main-library-content").style.display = "none";
+                // 🚀 Εδώ είναι το portfolio σου: Αν δεν είναι συνδεδεμένος, μπαίνει ΑΥΤΟΜΑΤΑ ως Guest!
+                autoGuestLogin();
             }
         } catch (error) {
             console.error("Σφάλμα κατά τον έλεγχο ταυτότητας:", error);
         }
     }
 
-    // 🚀 Χειροκίνητο Login ως Guest (Αν ο χρήστης πατήσει να μπει ως επισκέπτης)
-    async function autoGuestLogin() {
+    // 🚀 Αυτόματο Login ως Guest
+    async function autoGuestLogin(openModalAfter = false) {
         try {
             const response = await fetch("/login", {
                 method: "POST",
@@ -116,33 +115,38 @@
             
             if (response.ok) {
                 showLibrary(data.username);
+                // 🔥 Αν ερχόμαστε από Logout, του ανοίγουμε αυτόματα το παράθυρο Σύνδεσης!
+                if (openModalAfter) {
+                    document.getElementById("auth-container").style.display = "flex";
+                }
             } else {
                 console.error("Το backend απέρριψε τον guest:", data.message);
             }
         } catch (error) {
-            console.error("Αποτυχία σύνδεσης guest:", error);
+            console.error("Αποτυχία αυτόματης σύνδεσης guest:", error);
         }
     }
 
     // Εμφάνιση της βιβλιοθήκης στην οθόνη
     function showLibrary(username) {
+        // Κρύβουμε το modal αρχικά (εκτός αν το ζητήσουμε)
         document.getElementById("auth-container").style.display = "none";
         document.getElementById("main-library-content").style.display = "block";
         
         const welcomeSpan = document.getElementById("welcome-user");
         if (username === "guest") {
-            welcomeSpan.innerHTML = `👤 Επισκέπτης (Guest) | <a href="#" onclick="openAuthModal(event)" style="color: #2ecc71; text-decoration: underline; font-weight: bold;">Δημιουργία Λογαριασμού</a>`;
+            welcomeSpan.innerHTML = `👤 Επισκέπτης (Guest) | <a href="#" onclick="openAuthModal(event)" style="color: #2ecc71; text-decoration: underline; font-weight: bold;">Δημιουργία Λογαριασμού / Σύνδεση</a>`;
         } else {
-            welcomeSpan.innerHTML = `🌟 Καλώς όρισες, <strong>${username}</strong>!`;
+            welcomeSpan.innerHTML = `🌟 Καλώς όρισες, <strong>${username}</strong>! | <a href="#" onclick="logout(event)" style="color: #ff4d4d; text-decoration: underline; margin-left: 10px;">Αποσύνδεση</a>`;
         }
         
         // Φόρτωση των βιβλίων με ασφάλεια
         loadBooks();
     }
 
-    // Άνοιγμα του Auth Modal (αν ο guest θέλει δικό του προφίλ)
+    // Άνοιγμα του Auth Modal (είτε από το κουμπί είτε από το Logout)
     function openAuthModal(e) {
-        e.preventDefault();
+        if (e) e.preventDefault();
         document.getElementById("auth-container").style.display = "flex";
     }
 
@@ -206,18 +210,23 @@
         }
     }
 
-    // 🛑 Αποσύνδεση (Διορθωμένη)
-    async function logout() {
+    // 🛑 Αποσύνδεση (Έξυπνη: Σε βγάζει, σε γυρίζει σε Guest, αλλά σου ανοίγει τη φόρμα!)
+    async function logout(e) {
+        if (e) e.preventDefault();
         try {
             await fetch("/logout");
-            // Καθαρίζουμε την οθόνη και δείχνουμε οπωσδήποτε τη φόρμα σύνδεσης
-            document.getElementById("auth-container").style.display = "flex";
-            document.getElementById("main-library-content").style.display = "none";
             
-            // Καθαρισμός πεδίων
+            // Καθαρίζουμε τα πεδία κειμένου
             document.getElementById("auth-username").value = "";
             document.getElementById("auth-password").value = "";
-            document.getElementById("auth-message").innerText = "Αποσυνδεθήκατε επιτυχώς.";
+            
+            // Ξαναμπαίνει ως guest για να φαίνονται τα βιβλία, αλλά του πετάμε το Modal να συνδεθεί!
+            autoGuestLogin(true);
+            
+            setTimeout(() => {
+                document.getElementById("auth-message").innerText = "Αποσυνδεθήκατε. Συνδεθείτε με άλλο λογαριασμό.";
+            }, 500);
+
         } catch (error) {
             console.error("Σφάλμα κατά την αποσύνδεση:", error);
         }
@@ -225,7 +234,6 @@
 
     // --- ΔΙΑΧΕΙΡΙΣΗ ΒΙΒΛΙΩΝ ---
 
-    // Φόρτωση βιβλίων από τη βάση δεδομένων
     async function loadBooks() {
         try {
             const response = await fetch("/books");
@@ -256,7 +264,6 @@
         }
     }
 
-    // Προσθήκη Βιβλίου
     document.getElementById("bookform").addEventListener("submit", async function(e) {
         e.preventDefault();
 
@@ -285,7 +292,6 @@
         }
     });
 
-    // Διαγραφή Βιβλίου
     async function deleteBook(id) {
         if (confirm("Θέλεις σίγουρα να διαγράψεις αυτό το βιβλίο;")) {
             try {
