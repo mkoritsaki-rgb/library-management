@@ -15,10 +15,10 @@
     <h2 id="user-display"></h2>
     <button onclick="logout()">Αποσύνδεση</button>
     <form id="bookform">
-        <input type="text" id="title" placeholder="Τίτλος" required>
-        <input type="text" id="author" placeholder="Συγγραφέας" required>
-        <button type="submit">Προσθήκη</button>
-    </form>
+    <input type="text" id="title" placeholder="Τίτλος" required>
+    <input type="text" id="author" placeholder="Συγγραφέας" required>
+    <input type="number" id="year" placeholder="Έτος" required> <button type="submit">Προσθήκη</button>
+</form>
     <ul id="bookList"></ul>
 </div>
 
@@ -51,17 +51,18 @@
     }
 
     document.getElementById("bookform").addEventListener("submit", async (e) => {
-        e.preventDefault();
-        await fetch("/books", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({
-                title: document.getElementById("title").value,
-                author: document.getElementById("author").value
-            })
-        });
-        loadBooks();
+    e.preventDefault();
+    await fetch("/books", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            title: document.getElementById("title").value,
+            author: document.getElementById("author").value,
+            year: document.getElementById("year").value // Προσθήκη του year
+        })
     });
+    loadBooks();
+});
 
     async function logout() {
         await fetch("/logout");

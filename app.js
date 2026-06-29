@@ -59,9 +59,20 @@ app.get("/books", (req, res) => {
 // Προσθήκη Βιβλίου
 app.post("/books", (req, res) => {
     if (!req.session.username) return res.status(401).send();
-    const book = { ...req.body, username: req.session.username };
+    
+    // Εδώ στέλνουμε title, author και year όπως τα έχεις στη βάση
+    const book = { 
+        title: req.body.title, 
+        author: req.body.author, 
+        year: req.body.year, // Προσθήκη του year
+        username: req.session.username 
+    };
+
     db.query("INSERT INTO books SET ?", book, (err) => {
-        if (err) return res.status(500).send(err);
+        if (err) {
+            console.error("SQL Error:", err);
+            return res.status(500).send(err);
+        }
         res.send({ success: true });
     });
 });
