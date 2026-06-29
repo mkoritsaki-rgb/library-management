@@ -95,15 +95,16 @@
             if (data.authenticated) {
                 showLibrary(data.username);
             } else {
-                // 🚀 Αν δεν είναι συνδεδεμένος, τον συνδέουμε ΑΥΤΟΜΑΤΑ ως Guest για το Portfolio
-                autoGuestLogin();
+                // 🛑 Αν δεν είναι συνδεδεμένος, δείχνουμε τη φόρμα και κρύβουμε τη βιβλιοθήκη
+                document.getElementById("auth-container").style.display = "flex";
+                document.getElementById("main-library-content").style.display = "none";
             }
         } catch (error) {
             console.error("Σφάλμα κατά τον έλεγχο ταυτότητας:", error);
         }
     }
 
-    // 🚀 Αυτόματο Login ως Guest
+    // 🚀 Χειροκίνητο Login ως Guest (Αν ο χρήστης πατήσει να μπει ως επισκέπτης)
     async function autoGuestLogin() {
         try {
             const response = await fetch("/login", {
@@ -119,7 +120,7 @@
                 console.error("Το backend απέρριψε τον guest:", data.message);
             }
         } catch (error) {
-            console.error("Αποτυχία αυτόματης σύνδεσης guest:", error);
+            console.error("Αποτυχία σύνδεσης guest:", error);
         }
     }
 
@@ -132,15 +133,14 @@
         if (username === "guest") {
             welcomeSpan.innerHTML = `👤 Επισκέπτης (Guest) | <a href="#" onclick="openAuthModal(event)" style="color: #2ecc71; text-decoration: underline; font-weight: bold;">Δημιουργία Λογαριασμού</a>`;
         } else {
-            welcomeSpan.innerHTML = `🌟 Καλώς ορισες, <strong>${username}</strong>!`;
+            welcomeSpan.innerHTML = `🌟 Καλώς όρισες, <strong>${username}</strong>!`;
         }
         
-        // 🌟 ΜΟΝΟ αφού εμφανιστεί το περιεχόμενο, φορτώνουμε τα βιβλία με ασφάλεια
+        // Φόρτωση των βιβλίων με ασφάλεια
         loadBooks();
     }
 
     // Άνοιγμα του Auth Modal (αν ο guest θέλει δικό του προφίλ)
-    // Σημείωση: Αν το CSS σου έχει display: none, αυτό το κάνει flex για να εμφανιστεί
     function openAuthModal(e) {
         e.preventDefault();
         document.getElementById("auth-container").style.display = "flex";
@@ -206,12 +206,18 @@
         }
     }
 
-    // Αποσύνδεση
+    // 🛑 Αποσύνδεση (Διορθωμένη)
     async function logout() {
         try {
             await fetch("/logout");
-            // Μετά το logout, ξανακαλούμε την checkAuth για να ξαναμπεί αυτόματα ως guest
-            checkAuth();
+            // Καθαρίζουμε την οθόνη και δείχνουμε οπωσδήποτε τη φόρμα σύνδεσης
+            document.getElementById("auth-container").style.display = "flex";
+            document.getElementById("main-library-content").style.display = "none";
+            
+            // Καθαρισμός πεδίων
+            document.getElementById("auth-username").value = "";
+            document.getElementById("auth-password").value = "";
+            document.getElementById("auth-message").innerText = "Αποσυνδεθήκατε επιτυχώς.";
         } catch (error) {
             console.error("Σφάλμα κατά την αποσύνδεση:", error);
         }
@@ -293,7 +299,7 @@
         }
     }
 
-    // 🚀 ΕΚΚΙΝΗΣΗ ΡΟΗΣ: Καλούμε μόνο την checkAuth
+    // 🚀 ΕΚΚΙΝΗΣΗ ΡΟΗΣ
     checkAuth();
 </script>
 </body>
