@@ -46,11 +46,11 @@ app.get("/logout", (req, res) => {
 app.get("/books", (req, res) => {
     if (!req.session.username) return res.json([]);
     
-    // ΑΛΛΑΞΕ ΑΥΤΟ ΤΟ ΚΟΜΜΑΤΙ
-    db.query("SELECT * FROM books WHERE username = ?", [req.session.username], (err, results) => {
+    // Εδώ βεβαιώσου ότι τα ονόματα των στηλών είναι ακριβώς: title, author, year
+    db.query("SELECT id, title, author, year FROM books WHERE username = ?", [req.session.username], (err, results) => {
         if (err) {
-            console.error("SQL ERROR:", err); // ΑΥΤΟ ΘΑ ΜΑΣ ΔΕΙΞΕΙ ΤΟ ΛΑΘΟΣ ΣΤΑ LOGS
-            return res.status(500).json({ error: err.message });
+            console.error("SQL Error in GET:", err);
+            return res.status(500).json({ error: "Database error" });
         }
         res.json(results || []);
     });
@@ -60,18 +60,17 @@ app.get("/books", (req, res) => {
 app.post("/books", (req, res) => {
     if (!req.session.username) return res.status(401).send();
     
-    // Εδώ στέλνουμε title, author και year όπως τα έχεις στη βάση
     const book = { 
         title: req.body.title, 
         author: req.body.author, 
-        year: req.body.year, // Προσθήκη του year
+        year: req.body.year, // Το πεδίο year που έχεις στη βάση
         username: req.session.username 
     };
 
     db.query("INSERT INTO books SET ?", book, (err) => {
         if (err) {
-            console.error("SQL Error:", err);
-            return res.status(500).send(err);
+            console.error("SQL Error in POST:", err);
+            return res.status(500).send("Error saving to database");
         }
         res.send({ success: true });
     });
