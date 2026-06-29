@@ -47,6 +47,7 @@
     </div>
 
 <script>
+// Σύνδεση Χρήστη
 async function login() {
     const username = document.getElementById("username").value;
 
@@ -59,58 +60,73 @@ async function login() {
     checkAuth();
 }
 
+// Έλεγχος αν ο χρήστης είναι συνδεδεμένος (Ασφαλής έκδοση)
 async function checkAuth() {
     const res = await fetch("/check-auth");
     const data = await res.json();
 
+    const authContainer = document.getElementById("auth-container");
+    const library = document.getElementById("library");
+    const userDisplay = document.getElementById("user-display");
+
     if (data.authenticated) {
-        document.getElementById("auth-container").style.display = "none";
-        document.getElementById("library").style.display = "block";
-        document.getElementById("user-display").innerText = "Καλώς ήρθες " + data.username;
+        if (authContainer) authContainer.style.display = "none";
+        if (library) library.style.display = "block";
+        if (userDisplay) userDisplay.innerText = "Καλώς ήρθες " + data.username;
         loadBooks();
     } else {
-        // Αν ΔΕΝ είσαι συνδεδεμένη, δείξε το Login
-        document.getElementById("auth-container").style.display = "flex";
-        document.getElementById("library").style.display = "block"; // Ή none αν θες να κρύβεται τελείως
+        if (authContainer) authContainer.style.display = "flex";
+        if (library) library.style.display = "block";
     }
 }
 
+// Φόρτωση Βιβλίων
 async function loadBooks() {
     const res = await fetch("/books");
     const books = await res.json();
 
-    document.getElementById("bookList").innerHTML = books.map(b => `
-        <tr>
-            <td>${b.title}</td>
-            <td>${b.author}</td>
-            <td>${b.year}</td>
-            <td>🗑️</td>
-        </tr>
-    `).join('');
+    const bookList = document.getElementById("bookList");
+    if (bookList) {
+        bookList.innerHTML = books.map(b => `
+            <tr>
+                <td>${b.title}</td>
+                <td>${b.author}</td>
+                <td>${b.year}</td>
+                <td>🗑️</td>
+            </tr>
+        `).join('');
+    }
 }
 
-document.getElementById("bookform").addEventListener("submit", async (e) => {
-    e.preventDefault();
+// Προσθήκη Βιβλίου
+const bookForm = document.getElementById("bookform");
+if (bookForm) {
+    bookForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
 
-    await fetch("/books", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-            title: document.getElementById("title").value,
-            author: document.getElementById("author").value,
-            year: document.getElementById("year").value
-        })
+        await fetch("/books", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                title: document.getElementById("title").value,
+                author: document.getElementById("author").value,
+                year: document.getElementById("year").value
+            })
+        });
+
+        loadBooks();
     });
+}
 
-    loadBooks();
-});
-
+// Αποσύνδεση
 async function logout() {
     await fetch("/logout");
     location.reload();
 }
 
+// Αρχική εκτέλεση
 checkAuth();
+loadBooks(); // Τρέχει πάντα για να φαίνονται τα δημόσια βιβλία
 </script>
 
 </body>

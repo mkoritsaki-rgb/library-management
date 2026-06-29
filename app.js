@@ -13,6 +13,13 @@ const db = mysql.createPool({
   queueLimit: 0
 });
 
+// Πρόσθεσε αυτό για να μην "πεθαίνει" ο server σε κάθε λάθος
+db.on('error', function(err) {
+  console.log('Database error:', err);
+  if (err.code === 'PROTOCOL_CONNECTION_LOST') {
+    console.log('Database connection lost. Trying to reconnect...');
+  }
+});
 app.use(express.json());
 app.use(express.static('public'));
 
