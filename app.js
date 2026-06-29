@@ -7,7 +7,12 @@ app.use(express.json());
 app.use(express.static('public'));
 app.use(session({ secret: 'secret', resave: false, saveUninitialized: true }));
 
-const db = mysql.createConnection({ host: 'localhost', user: 'root', password: '', database: 'library_db' });
+const db = mysql.createConnection({
+    host: 'bjntcif47a8lijewmwxx-mysql.services.clever-cloud.com',
+    user: 'uwnoosni3svl2uw5',
+    password: 'fwqBvO9UjW7e3UrrKjIk',
+    database: 'bjntcif47a8lijewmwxx'
+});
 
 app.get("/books", (req, res) => {
     const user = req.session.username;
