@@ -14,6 +14,13 @@ const db = mysql.createConnection({
     database: 'bjntcif47a8lijewmwxx'
 });
 
+app.get("/check-auth", (req, res) => {
+    if (req.session.username) {
+        res.json({ authenticated: true, username: req.session.username });
+    } else {
+        res.json({ authenticated: false });
+    }
+});
 app.get("/books", (req, res) => {
     const user = req.session.username;
     if (!user) return res.json([]);
@@ -39,4 +46,8 @@ app.get("/logout", (req, res) => {
     res.send();
 });
 
+// Κρατάει τη βάση ζωντανή
+setInterval(() => {
+    db.query('SELECT 1');
+}, 5000);
 app.listen(3000);
