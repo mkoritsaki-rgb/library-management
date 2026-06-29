@@ -18,6 +18,7 @@
     </div>
 </div>
 
+<div id="auth-container" style="display:none;"></div>
 <!-- MAIN APP -->
 <div id="library" class="container">
 
@@ -75,10 +76,12 @@ async function checkAuth() {
     if (data.authenticated) {
         document.getElementById("auth-container").style.display = "none";
         document.getElementById("library").style.display = "block";
-        document.getElementById("user-display").innerText =
-            "Καλώς ήρθες " + data.username;
-
+        document.getElementById("user-display").innerText = "Καλώς ήρθες " + data.username;
         loadBooks();
+    } else {
+        // Αν ΔΕΝ είσαι συνδεδεμένη, δείξε το Login
+        document.getElementById("auth-container").style.display = "flex";
+        document.getElementById("library").style.display = "block"; // Ή none αν θες να κρύβεται τελείως
     }
 }
 
