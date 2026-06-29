@@ -1,62 +1,53 @@
 <!DOCTYPE html>
 <html lang="el">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Smart Library</title>
-<link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Library</title>
+    <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
-<!-- LOGIN -->
-<div id="auth-container">
-    <div class="auth-box">
-        <h2>Login</h2>
-        <input type="text" id="username" placeholder="Όνομα χρήστη">
-        <button onclick="login()">Σύνδεση</button>
+    <div class="container">
+        <div id="auth-container">
+            <div class="auth-box">
+                <h2>Login</h2>
+                <input type="text" id="username" placeholder="Όνομα χρήστη">
+                <button onclick="login()">Σύνδεση</button>
+            </div>
+            <p id="user-display"></p>
+            <button onclick="logout()">Logout</button>
+        </div>
+
+        <img src="https://images.unsplash.com/photo-1507842217343-583bb7270b66" class="library-img">
+        
+        <h1>📚 Smart Library 📚</h1>
+
+        <section id="admin-area">
+            <h2>Προσθήκη Βιβλίου</h2>
+            <form id="bookform">
+                <input type="text" id="title" placeholder="Τίτλος" required>
+                <input type="text" id="author" placeholder="Συγγραφέας" required>
+                <input type="number" id="year" placeholder="Έτος" required>
+                <button type="submit">Προσθήκη</button>
+            </form>
+        </section>
+
+        <section class="books-list">
+            <h2>Η Συλλογή μου</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Τίτλος</th>
+                        <th>Συγγραφέας</th>
+                        <th>Έτος</th>
+                        <th>Ενέργειες</th>
+                    </tr>
+                </thead>
+                <tbody id="bookList"></tbody>
+            </table>
+        </section>
     </div>
-</div>
-
-<div id="auth-container" style="display:none;"></div>
-<!-- MAIN APP -->
-<div id="library" class="container">
-    <img src="https://images.unsplash.com/photo-1507842217343-583bb7270b66" style="width:100%; border-radius:10px;">
-    
-    <h1>📚 Smart Library 📚</h1>
-    </div>
-    <p id="user-display"></p>
-
-    <section class="add-book">
-        <h2>Προσθήκη Βιβλίου</h2>
-
-        <form id="bookform">
-            <input type="text" id="title" placeholder="Τίτλος" required>
-            <input type="text" id="author" placeholder="Συγγραφέας" required>
-            <input type="number" id="year" placeholder="Έτος" required>
-            <button type="submit">Προσθήκη</button>
-        </form>
-    </section>
-
-    <section class="books-list">
-        <h2>Η Συλλογή μου</h2>
-
-        <table>
-            <thead>
-                <tr>
-                    <th>Τίτλος</th>
-                    <th>Συγγραφέας</th>
-                    <th>Έτος</th>
-                    <th>Ενέργειες</th>
-                </tr>
-            </thead>
-
-            <tbody id="bookList"></tbody>
-        </table>
-    </section>
-
-    <button onclick="logout()">Logout</button>
-</div>
 
 <script>
 async function login() {
