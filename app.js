@@ -45,8 +45,13 @@ app.get("/logout", (req, res) => {
 // Ανάκτηση Βιβλίων
 app.get("/books", (req, res) => {
     if (!req.session.username) return res.json([]);
+    
+    // ΑΛΛΑΞΕ ΑΥΤΟ ΤΟ ΚΟΜΜΑΤΙ
     db.query("SELECT * FROM books WHERE username = ?", [req.session.username], (err, results) => {
-        if (err) return res.status(500).send(err);
+        if (err) {
+            console.error("SQL ERROR:", err); // ΑΥΤΟ ΘΑ ΜΑΣ ΔΕΙΞΕΙ ΤΟ ΛΑΘΟΣ ΣΤΑ LOGS
+            return res.status(500).json({ error: err.message });
+        }
         res.json(results || []);
     });
 });
