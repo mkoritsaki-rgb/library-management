@@ -13,7 +13,7 @@ const db = mysql.createPool({
     queueLimit: 0
 });
 
-// Προστασία από κρασάρισμα
+
 db.on('error', (err) => console.log('Database error:', err));
 
 app.use(express.json());
